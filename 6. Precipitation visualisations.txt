@@ -1,0 +1,74 @@
+Me: Please use the sequential visualisation code as a template for how we are going to create the precipitation visualisation code
+
+GPT: 
+
+import requests
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
+
+def fetch_weather_data(location):
+    """Fetch JSON weather data for the given location from wttr.in."""
+    url = f"https://wttr.in/{location}?format=j1"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"[Error] Could not fetch weather data: {e}")
+        return None
+
+def extract_sequential_precipitation(data, days=3):
+    """
+    Build a sequential time series of precipitation chance at 6 AM, 12 PM, 6 PM, and midnight
+    across `days` days.
+    """
+    time_codes = ['600', '1200', '1800', '0']
+    datetimes = []
+    precip_chances = []
+    weather_days = data.get('weather', [])[:days]
+
+    for i, day in enumerate(weather_days):
+        for code in time_codes:
+            if code == '0':  # midnight belongs to the next day
+                if i + 1 < len(weather_days):
+                    next_day = weather_days[i + 1]
+                    dt = datetime.strptime(f"{next_day['date']} 0000", "%Y-%m-%d %H%M")
+                    entry = next((h for h in next_day['hourly'] if h.get('time') == '0'), None)
+                else:
+                    continue
+            else:
+                dt = datetime.strptime(f"{day['date']} {code.zfill(4)}", "%Y-%m-%d %H%M")
+                entry = next((h for h in day['hourly'] if h.get('time') == code), None)
+            if entry:
+                datetimes.append(dt)
+                # Extract precipitation chance (chanceofrain)
+                precip_chances.append(int(entry.get('chanceofrain', 0)))
+
+    return datetimes, precip_chances
+
+def plot_sequential_precipitation(location, days=3):
+    data = fetch_weather_data(location)
+    if not data:
+        return
+
+    times, precip = extract_sequential_precipitation(data, days)
+
+    fig, ax = plt.subplots()
+    ax.plot(times, precip, marker='o', alpha=0.5)
+    ax.set_title(f"{location} {days}-Day Sequential Precipitation Chance")
+    ax.set_ylabel("Chance of Rain (%)")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %I%p'))
+    ax.set_xticks(times)
+    fig.autofmt_xdate()
+    ax.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def main():
+    loc = input("Enter location (e.g., Perth): ")
+    plot_sequential_precipitation(loc)
+
+if __name__ == "__main__":
+    main()
+

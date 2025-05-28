@@ -1,0 +1,72 @@
+Me: Can you just do a simple framework for the menu and natural language parsing so i can test if they work
+
+GPT:
+import pyinputplus as pyip
+import re
+
+def parse_weather_question(question):
+    """
+    Parses a natural language question to extract intent and location.
+    """
+    question = question.lower()
+
+    # Identify intent
+    if "rain" in question:
+        intent = "rain"
+    elif "temperature" in question or "hot" in question or "cold" in question:
+        intent = "temperature"
+    elif "forecast" in question or "weather" in question:
+        intent = "forecast"
+    else:
+        intent = "unknown"
+
+    # Identify location
+    match = re.search(r'in ([a-zA-Z\s]+)', question)
+    location = match.group(1).strip() if match else "unknown"
+
+    return {"intent": intent, "location": location}
+
+def handle_natural_language_query():
+    """
+    Prompts the user for a question and interprets it.
+    """
+    question = input("Ask your weather question (e.g., 'Will it rain in Perth tomorrow?'):\n")
+    parsed = parse_weather_question(question)
+
+    print("\n--- Parsed Result ---")
+    print(f"Intent   : {parsed['intent']}")
+    print(f"Location : {parsed['location']}")
+
+    if parsed["location"] == "unknown":
+        print("❌ Could not detect location. Please include 'in <location>' in your question.")
+    elif parsed["intent"] == "forecast":
+        print(f"✅ Would show forecast for {parsed['location']}")
+    elif parsed["intent"] == "rain":
+        print(f"✅ Would show precipitation chart for {parsed['location']}")
+    elif parsed["intent"] == "temperature":
+        print(f"✅ Would show temperature chart for {parsed['location']}")
+    else:
+        print("❌ Could not understand the type of weather info requested.")
+
+def main():
+    """
+    Simple menu-driven interface with an NLI option.
+    """
+    while True:
+        choice = pyip.inputMenu(
+            ["Standard forecast", "Ask a natural language question", "Exit"],
+            prompt="\nWhat would you like to do?\n",
+            numbered=True
+        )
+
+        if choice == "Standard forecast":
+            location = input("Enter location: ")
+            print(f"✅ Would display weather forecast for {location}")
+        elif choice == "Ask a natural language question":
+            handle_natural_language_query()
+        elif choice == "Exit":
+            print("Goodbye!")
+            break
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,99 @@
+Me: how would i go about repeating the original 5 day forecast code so that i can search multiple locations without having to refresh the code
+
+GPT: To **allow multiple 5-day weather searches** without restarting or re-running your code, you should wrap your logic in a **loop** that keeps prompting the user until they choose to exit.
+
+Since you're required to use **`pyinputplus`** for your menu system, we’ll use `pyinputplus.inputMenu()` to give the user a nice, repeatable interface.
+
+---
+
+### ✅ Step-by-Step Plan:
+
+1. Import `pyinputplus` as `pyip`
+2. Create a menu loop that asks:
+
+   * "Do you want to check another location?"
+3. Wrap the weather display in that loop
+4. Exit gracefully if the user selects “Exit”
+
+---
+
+### 📦 Required Package
+
+```bash
+pip install pyinputplus
+```
+
+---
+
+### ✅ Updated Code with Loop and Menu
+
+```python
+import requests
+import pyinputplus as pyip
+
+def get_weather_data(location):
+    """
+    Fetches weather data from wttr.in for the given location.
+    """
+    url = f"https://wttr.in/{location}?format=j1"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"[Error] Could not fetch weather data: {e}")
+        return None
+
+def display_weather(location):
+    """
+    Displays current weather and a 5-day forecast for the location.
+    """
+    data = get_weather_data(location)
+    if not data:
+        return
+
+    current = data['current_condition'][0]
+    print(f"\nWeather for {location.title()}")
+    print("-" * 30)
+    print(f"Current Temp: {current['temp_C']}°C")
+    print(f"Condition: {current['weatherDesc'][0]['value']}\n")
+
+    days = data['weather'][:5]  # Limit to 5 days
+    for day in days:
+        date = day['date']
+        maxtemp = day['maxtempC']
+        mintemp = day['mintempC']
+        rain_chance = day['hourly'][4]['chanceofrain']
+        print(f"Date: {date}")
+        print(f"High: {maxtemp}°C, Low: {mintemp}°C, Rain: {rain_chance}%\n")
+
+def main():
+    """
+    Main loop that keeps asking for locations until user exits.
+    """
+    print("🌤️ Welcome to Weather Advisor!")
+    
+    while True:
+        location = input("\nEnter a location to view the weather: ")
+        display_weather(location)
+
+        repeat = pyip.inputMenu(["Yes", "No"], prompt="Would you like to check another location?\n", numbered=True)
+        if repeat == "No":
+            print("Thank you for using Weather Advisor! Stay safe! ☔")
+            break
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### 🔁 Why This Works
+
+* **Looping with `while True`** lets users check as many locations as they want.
+* **`pyinputplus.inputMenu()`** gives a clear and validated Yes/No choice, avoiding input errors.
+* If the user says “No”, the loop breaks and the app exits gracefully.
+
+---
+
+Would you like to expand this menu further next (e.g., choose between current weather, forecast, or rain chance)?

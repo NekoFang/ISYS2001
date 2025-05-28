@@ -1,16 +1,16 @@
 # ✍️ Project Reflection
 
 ## AI Tools Used
-What tools did you use (e.g., ChatGPT, Copilot)? How did they help?
+I used GPT, it helped significantly by telling me where im at fault and giving me ideas when i need.
 
 ## Prompting Techniques
-Which intentional prompting strategies did you apply?
+I usually went through an iterative strategy so that i can analyse if theres any issues with code before i integrate it into the final work
 
 ## What Worked Well?
-Describe one thing you’re proud of.
+Im unsure however im proud of my work, i think its effective
 
 ## What Would You Do Differently?
-Describe one thing you'd change if you had more time.
+Id probably add more features maybe a historical weather search.
 
 ## Final Thoughts
-Any parting comments on your learning experience?
+I really enjoyed this

@@ -1,0 +1,212 @@
+Me: What i want you to do is to start off with temperature, i will work with you to iterate the development and make sure there are no bugs
+
+My goals for this is to use the existing daily data "morning, noon, evening, night" to create a trend line (not averaged) over 5 days (if the data is not there less days is fine)
+
+GPT: Here’s a standalone draft script for plotting the 5-day temperature trends (morning, noon, evening, night) using wttr.in. Save this as, say, plot_temperature.py, then run it and enter your location when prompted:
+
+import requests
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+def fetch_weather_data(location):
+    """Fetch JSON weather data for the given location from wttr.in."""
+    url = f"https://wttr.in/{location}?format=j1"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"[Error] Could not fetch weather data: {e}")
+        return None
+
+def extract_temperatures(data, days=5):
+    """
+    From the wttr.in JSON, pull out the temperatures at
+    morning (09:00), noon (12:00), evening (18:00), night (21:00)
+    for up to `days` days.
+    """
+    time_map = {
+        'morning': '900',
+        'noon':    '1200',
+        'evening': '1800',
+        'night':   '2100'
+    }
+    dates = []
+    temps = {label: [] for label in time_map}
+
+    for day in data.get('weather', [])[:days]:
+        # date string is like "2025-05-28"
+        dates.append(datetime.strptime(day['date'], "%Y-%m-%d").date())
+        hourly = day.get('hourly', [])
+        for label, t in time_map.items():
+            entry = next((h for h in hourly if h.get('time') == t), None)
+            if entry:
+                temps[label].append(int(entry['tempC']))
+            else:
+                temps[label].append(None)  # in case a slot is missing
+
+    return dates, temps
+
+def plot_temperature_trend(location, days=5):
+    """Fetch, extract and plot the temperature trend."""
+    data = fetch_weather_data(location)
+    if not data:
+        return
+
+    dates, temps = extract_temperatures(data, days)
+
+    plt.figure()
+    for label, values in temps.items():
+        plt.plot(dates, values, label=label)
+    plt.title(f"{location} 5-Day Temperature Trend")
+    plt.xlabel("Date")
+    plt.ylabel("Temperature (°C)")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    loc = input("Enter location (e.g., London): ")
+    plot_temperature_trend(loc)
+
+Me: This is really good. However there are a couple of issues. 1st i realised the data set is only a 3 day forecast. 2nd the x label does not represent what is being shown. finally some of the data overlap causing it to be unclear where certain data points lie.
+
+Therefore amend the code from 5 day to 3 day, change the x label to only show the day rather than time, and finally make the data lines 50% transparent.
+
+GPT: 
+import requests
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+def fetch_weather_data(location):
+    """Fetch JSON weather data for the given location from wttr.in."""
+    url = f"https://wttr.in/{location}?format=j1"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"[Error] Could not fetch weather data: {e}")
+        return None
+
+def extract_temperatures(data, days=3):
+    """
+    From the wttr.in JSON, pull out the temperatures at
+    morning (09:00), noon (12:00), evening (18:00), night (21:00)
+    for up to `days` days.
+    """
+    time_map = {
+        'morning': '900',
+        'noon':    '1200',
+        'evening': '1800',
+        'night':   '2100'
+    }
+    dates = []
+    temps = {label: [] for label in time_map}
+
+    for day in data.get('weather', [])[:days]:
+        dates.append(datetime.strptime(day['date'], "%Y-%m-%d").date())
+        hourly = day.get('hourly', [])
+        for label, t in time_map.items():
+            entry = next((h for h in hourly if h.get('time') == t), None)
+            temps[label].append(int(entry['tempC']) if entry else None)
+
+    return dates, temps
+
+def plot_temperature_trend(location, days=3):
+    """Fetch, extract and plot the temperature trend."""
+    data = fetch_weather_data(location)
+    if not data:
+        return
+
+    dates, temps = extract_temperatures(data, days)
+    # Create day-of-week labels for the x-axis
+    day_labels = [d.strftime("%a") for d in dates]
+
+    plt.figure()
+    for label, values in temps.items():
+        plt.plot(day_labels, values, label=label, alpha=0.5)  # 50% transparency
+    plt.title(f"{location} {days}-Day Temperature Trend")
+    plt.xlabel("Day")
+    plt.ylabel("Temperature (°C)")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    loc = input("Enter location (e.g., London): ")
+    plot_temperature_trend(loc)
+
+Me: Now can you write code for a graph for the sequential time e.g. 27th 6am, 12pm, 6pm, 12am, 28th 6am...
+
+GPT: 
+import requests
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
+
+def fetch_weather_data(location):
+    """Fetch JSON weather data for the given location from wttr.in."""
+    url = f"https://wttr.in/{location}?format=j1"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"[Error] Could not fetch weather data: {e}")
+        return None
+
+def extract_sequential_temperatures(data, days=3):
+    """
+    Build a sequential time series of temperatures at 6am, 12pm, 6pm, and midnight
+    across `days` days, including the midnight entry at the end of each day.
+    """
+    time_codes = ['600', '1200', '1800', '0']
+    datetimes = []
+    temps = []
+    weather_days = data.get('weather', [])[:days]
+
+    for i, day in enumerate(weather_days):
+        date_str = day['date']
+        hourly = day.get('hourly', [])
+        for code in time_codes:
+            if code == '0':  # midnight belongs to the next day
+                if i + 1 < len(weather_days):
+                    next_date = weather_days[i + 1]['date']
+                    dt = datetime.strptime(f"{next_date} 0000", "%Y-%m-%d %H%M")
+                    entry = next((h for h in weather_days[i + 1]['hourly'] if h.get('time') == '0'), None)
+                else:
+                    continue
+            else:
+                dt = datetime.strptime(f"{date_str} {code.zfill(4)}", "%Y-%m-%d %H%M")
+                entry = next((h for h in hourly if h.get('time') == code), None)
+            if entry:
+                datetimes.append(dt)
+                temps.append(int(entry['tempC']))
+
+    return datetimes, temps
+
+def plot_sequential_temperature_trend(location, days=3):
+    data = fetch_weather_data(location)
+    if not data:
+        return
+
+    times, temperatures = extract_sequential_temperatures(data, days)
+
+    fig, ax = plt.subplots()
+    ax.plot(times, temperatures, marker='o', alpha=0.5)
+    ax.set_title(f"{location} {days}-Day Sequential Temperature")
+    ax.set_ylabel("Temperature (°C)")
+    ax.set_xticks(times)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %I%p'))
+    fig.autofmt_xdate()
+    ax.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    loc = input("Enter location (e.g., Perth): ")
+    plot_sequential_temperature_trend(loc)
+
